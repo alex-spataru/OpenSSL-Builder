@@ -29,28 +29,25 @@ jobs:
             triplet: VC-WIN64A
             make: nmake
 
-    defaults:
-      run:
-        shell: bash
-
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
 
+      # ---------------------- Windows Perl + Modules --------------------------
       - name: Install Perl (Chocolatey)
         if: runner.os == 'Windows'
         run: choco install strawberryperl -y
         shell: powershell
 
-      - name: Install required Perl modules (Windows)
+      - name: Install Perl modules (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
           perl -MCPAN -e "install App::cpanminus"
-          $cpanmPath = Get-Command cpanm | Select-Object -ExpandProperty Source
-          & $cpanmPath --notest --verbose --install-type=site IPC::Cmd Params::Check Locale::Maketext::Simple
+          $cpanm = Get-Command cpanm | Select-Object -ExpandProperty Source
+          & $cpanm --notest IPC::Cmd Params::Check Locale::Maketext::Simple
 
-      - name: Fix Perl environment for OpenSSL build (Windows)
+      - name: Set Perl env path (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
@@ -58,38 +55,35 @@ jobs:
           echo "PERL=$perlPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           echo "OPENSSL_SRC_PERL=$perlPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-      - name: Install required Perl modules (macOS/Linux)
+      - name: Setup MSVC environment
+        if: matrix.compiler == 'msvc'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      # ---------------------- macOS/Linux Perl Modules --------------------------
+      - name: Install Perl modules (macOS/Linux)
         if: runner.os != 'Windows'
+        shell: bash
         run: |
           curl -L https://cpanmin.us | perl - --notest -l "$HOME/perl5" App::cpanminus
           export PATH="$HOME/perl5/bin:$PATH"
           export PERL5LIB="$HOME/perl5/lib/perl5"
           cpanm IPC::Cmd Params::Check Locale::Maketext::Simple
 
-      - name: Setup MSVC environment
-        if: matrix.compiler == 'msvc'
-        uses: ilammy/msvc-dev-cmd@v1
-
-      - name: Download and build OpenSSL
+      # ---------------------- Build: macOS --------------------------
+      - name: Build OpenSSL (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
         run: |
           curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           cd openssl-${{ env.OPENSSL_VERSION }}
 
-          echo "Configuring OpenSSL for ${{ matrix.triplet }}"
-
-          if [[ "${{ matrix.compiler }}" == "msvc" ]]; then
-            perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
-            ${{ matrix.make }} install_dev
-
-          elif [[ "${{ matrix.compiler }}" == "universal" ]]; then
+          if [ "${{ matrix.compiler }}" = "universal" ]; then
             mkdir -p build-x86_64 build-arm64
-
             for arch in x86_64 arm64; do
               mkdir -p build-$arch
               cp -R . build-$arch/src
               pushd build-$arch/src
-
               perl Configure darwin64-${arch}-cc no-shared --prefix="${{ github.workspace }}/openssl-universal-$arch"
               make -j$(sysctl -n hw.logicalcpu)
               make install_sw
@@ -110,13 +104,27 @@ jobs:
               -output "${{ github.workspace }}/openssl-out/lib/libcrypto.a"
 
             cp -R "${{ github.workspace }}/openssl-universal-x86_64/include" "${{ github.workspace }}/openssl-out/"
-
           else
             perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
-            ${{ matrix.make }} -j4
-            ${{ matrix.make }} install
+            make -j$(sysctl -n hw.logicalcpu)
+            make install_sw
           fi
 
+      # ---------------------- Build: Windows --------------------------
+      - name: Build OpenSSL (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Invoke-WebRequest https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz -OutFile openssl.tar.gz
+          tar -xf openssl.tar.gz
+          Set-Location openssl-${{ env.OPENSSL_VERSION }}
+
+          Write-Host "Configuring OpenSSL for ${{ matrix.triplet }}"
+          perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}\openssl-out"
+          $makeCmd = "${{ matrix.make }}"
+          & $makeCmd install_dev
+
+      # ---------------------- Upload Artifact --------------------------
       - name: Upload OpenSSL artifact
         uses: actions/upload-artifact@v4
         with:
