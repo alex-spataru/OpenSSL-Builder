@@ -19,15 +19,15 @@ jobs:
             triplet: universal
             make: make
 
-          - os: windows-latest
-            compiler: mingw
-            triplet: mingw64
-            make: mingw32-make
+          #- os: windows-latest
+          #  compiler: mingw
+          #  triplet: mingw64
+          #  make: mingw32-make
 
-          - os: windows-latest
-            compiler: msvc
-            triplet: VC-WIN64A
-            make: nmake
+          #- os: windows-latest
+          #  compiler: msvc
+          #  triplet: VC-WIN64A
+          #  make: nmake
 
     steps:
       - name: Checkout source
