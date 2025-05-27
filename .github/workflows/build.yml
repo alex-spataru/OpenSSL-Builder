@@ -39,6 +39,11 @@ jobs:
         run: choco install strawberryperl -y
         shell: powershell
 
+      - name: Install NASM
+        if: runner.os == 'Windows'
+        run: choco install nasm -y
+        shell: powershell
+
       - name: Install Perl modules (Windows)
         if: runner.os == 'Windows'
         shell: powershell
@@ -59,8 +64,8 @@ jobs:
         if: matrix.compiler == 'msvc'
         uses: ilammy/msvc-dev-cmd@v1
 
-      # ---------------------- macOS/Linux Perl Modules --------------------------
-      - name: Install Perl modules (macOS/Linux)
+      # ---------------------- macOS Perl Modules --------------------
+      - name: Install Perl modules (macOS)
         if: runner.os != 'Windows'
         shell: bash
         run: |
@@ -71,66 +76,63 @@ jobs:
 
       # ---------------------- Build: macOS --------------------------
       - name: Build OpenSSL (macOS)
-        if: runner.os == 'macOS'
+        if: matrix.compiler == 'universal'
         shell: bash
         run: |
           curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           cd openssl-${{ env.OPENSSL_VERSION }}
 
-          if [ "${{ matrix.compiler }}" = "universal" ]; then
-            mkdir -p build-x86_64 build-arm64
-            for arch in x86_64 arm64; do
-              mkdir -p build-$arch
-              cp -R . build-$arch/src
-              pushd build-$arch/src
-              perl Configure darwin64-${arch}-cc no-shared --prefix="${{ github.workspace }}/openssl-universal-$arch"
-              make -j$(sysctl -n hw.logicalcpu)
-              make install_sw
-              popd
-            done
-
-            mkdir -p "${{ github.workspace }}/openssl-out/lib"
-            mkdir -p "${{ github.workspace }}/openssl-out/include"
-
-            lipo -create \
-              "${{ github.workspace }}/openssl-universal-x86_64/lib/libssl.a" \
-              "${{ github.workspace }}/openssl-universal-arm64/lib/libssl.a" \
-              -output "${{ github.workspace }}/openssl-out/lib/libssl.a"
-
-            lipo -create \
-              "${{ github.workspace }}/openssl-universal-x86_64/lib/libcrypto.a" \
-              "${{ github.workspace }}/openssl-universal-arm64/lib/libcrypto.a" \
-              -output "${{ github.workspace }}/openssl-out/lib/libcrypto.a"
-
-            cp -R "${{ github.workspace }}/openssl-universal-x86_64/include" "${{ github.workspace }}/openssl-out/"
-          else
-            perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
+          mkdir -p build-x86_64 build-arm64
+          for arch in x86_64 arm64; do
+            mkdir -p build-$arch
+            cp -R . build-$arch/src
+            pushd build-$arch/src
+            perl Configure darwin64-${arch}-cc no-shared --prefix="${{ github.workspace }}/openssl-universal-$arch"
             make -j$(sysctl -n hw.logicalcpu)
             make install_sw
-          fi
+            popd
+          done
 
-      # ---------------------- Build: Windows --------------------------
-      - name: Build OpenSSL (Windows)
-        if: runner.os == 'Windows'
+          mkdir -p "${{ github.workspace }}/openssl-out/lib"
+          mkdir -p "${{ github.workspace }}/openssl-out/include"
+
+          lipo -create \
+            "${{ github.workspace }}/openssl-universal-x86_64/lib/libssl.a" \
+            "${{ github.workspace }}/openssl-universal-arm64/lib/libssl.a" \
+            -output "${{ github.workspace }}/openssl-out/lib/libssl.a"
+
+          lipo -create \
+            "${{ github.workspace }}/openssl-universal-x86_64/lib/libcrypto.a" \
+            "${{ github.workspace }}/openssl-universal-arm64/lib/libcrypto.a" \
+            -output "${{ github.workspace }}/openssl-out/lib/libcrypto.a"
+
+          cp -R "${{ github.workspace }}/openssl-universal-x86_64/include" "${{ github.workspace }}/openssl-out/"
+
+      # ---------------------- Build: Windows (MSVC) --------------------------
+      - name: Build OpenSSL (Windows MSVC)
+        if: matrix.compiler == 'msvc'
         shell: powershell
         run: |
-          $perl = (Get-Command perl).Source
           Invoke-WebRequest https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz -OutFile openssl.tar.gz
           tar -xf openssl.tar.gz
           Set-Location openssl-${{ env.OPENSSL_VERSION }}
-      
-          Write-Host "Using Perl: $perl"
-          Write-Host "Configuring OpenSSL for ${{ matrix.triplet }}"
-      
-          & $perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}\openssl-out"
-      
-          if ("${{ matrix.compiler }}" -eq "msvc") {
-            & nmake install_dev
-          } else {
-            & mingw32-make -j4
-            & mingw32-make install
-          }
+
+          perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}\openssl-out"
+          & ${{ matrix.make }} install_dev
+
+      # ---------------------- Build: Windows (MinGW) --------------------------
+      - name: Build OpenSSL (Windows MinGW)
+        if: matrix.compiler == 'mingw'
+        shell: bash
+        run: |
+          curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          cd openssl-${{ env.OPENSSL_VERSION }}
+
+          perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
+          ${{ matrix.make }} -j4
+          ${{ matrix.make }} install
 
       # ---------------------- Upload Artifact --------------------------
       - name: Upload OpenSSL artifact
