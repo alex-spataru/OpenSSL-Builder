@@ -1,4 +1,6 @@
-# OpenSSL Builder – Static Cross-Platform Builds
+<img height="128px" src="https://upload.wikimedia.org/wikipedia/commons/6/6a/OpenSSL_logo.svg"/>
+
+[![CI Build](https://github.com/alex-spataru/OpenSSL-Builder/actions/workflows/build.yml/badge.svg)](https://github.com/alex-spataru/OpenSSL-Builder/actions/workflows/build.yml)
 
 This repository automates the process of building **static OpenSSL libraries** for multiple platforms. It is intended for C++ developers who need portable, redistributable OpenSSL binaries without relying on shared libraries or dynamic runtime dependencies.
 
