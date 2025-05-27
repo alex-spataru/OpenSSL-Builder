@@ -140,12 +140,17 @@ jobs:
         shell: bash
         run: |
           curl -sSL https://openssl-library.org/source/license/apache-license-2.0.txt -o "${{ github.workspace }}/openssl-out/LICENSE-OpenSSL.txt"
-     
+
+      - name: 📦 Compress OpenSSL output
+        shell: bash
+        run: |
+          zip -r openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}.zip openssl-out
+          
       - name: 📦 Upload OpenSSL artifact
         uses: actions/upload-artifact@v4
         with:
           name: openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}
-          path: openssl-out
+          path: openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}.zip
 
   upload:
     name: 🗂️ Create release and upload artifacts
@@ -179,7 +184,7 @@ jobs:
           echo "| File | Size | SHA256 Checksum |" > release-body.md
           echo "|------|------|-----------------|" >> release-body.md
 
-          find ./artifacts -type f | sort | while read -r file; do
+          find ./artifacts -type f -name "*.zip" | sort | while read -r file; do
             hash=$(sha256sum "$file" | awk '{print $1}')
             size=$(du -h "$file" | cut -f1)
             filename=$(basename "$file")
