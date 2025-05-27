@@ -29,14 +29,12 @@ Each completed build produces the following output:
 
 ```
 openssl-out/
-├── include/               # Public OpenSSL headers
-└── lib/                   # Static libraries
-├── libssl.a / libssl.lib
-├── libcrypto.a / libcrypto.lib
-└── libcrypto.a / libcrypto.lib
+├── include/              
+├── lib/                   
+├──── libssl.a / libssl.lib
+├──── libcrypto.a / libcrypto.lib
+└── LICENSE-OpenSSL.txt
 ```
-
-A copy of the official OpenSSL license file is also included in the output.
 
 ## How to Use
 
