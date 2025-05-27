@@ -137,7 +137,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      RELEASE_TAG: ${{ env.OPENSSL_VERSION }}
+      RELEASE_TAG: 3.5.0
 
     steps:
       - name: 📥 Download artifacts
