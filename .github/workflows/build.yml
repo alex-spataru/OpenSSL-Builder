@@ -5,6 +5,9 @@ on:
   push:
     branches: [ main ]
 
+env:
+  OPENSSL_VERSION: 3.5.0
+
 jobs:
   build-openssl:
     runs-on: ${{ matrix.os }}
@@ -12,12 +15,15 @@ jobs:
       matrix:
         include:
           - os: macos-latest
+            compiler: clang
             triplet: darwin64-x86_64-cc
             make: make
+
           - os: windows-latest
             compiler: mingw
             triplet: mingw64
             make: mingw32-make
+
           - os: windows-latest
             compiler: msvc
             triplet: VC-WIN64A
@@ -28,24 +34,25 @@ jobs:
         shell: bash
 
     steps:
-      - name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v3
 
-      - name: Install Perl
-        uses: strawberryperl/install@v1
+      - name: Install Perl (Chocolatey)
         if: runner.os == 'Windows'
+        run: choco install strawberryperl -y
+        shell: powershell
 
-      - name: Install MSVC Dev Environment
-        uses: ilammy/msvc-dev-cmd@v1
+      - name: Setup MSVC environment
         if: matrix.compiler == 'msvc'
+        uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Download OpenSSL
+      - name: Download and build OpenSSL
         run: |
-          curl -LO https://www.openssl.org/source/openssl-3.2.1.tar.gz
-          tar -xf openssl-3.2.1.tar.gz
-          cd openssl-3.2.1
+          curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          cd openssl-${{ env.OPENSSL_VERSION }}
 
-          echo "Configuring OpenSSL for ${{ matrix.triplet }}"
+          echo "Configuring for: ${{ matrix.triplet }}"
 
           if [[ "${{ matrix.compiler }}" == "msvc" ]]; then
             perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
@@ -59,5 +66,5 @@ jobs:
       - name: Upload OpenSSL artifact
         uses: actions/upload-artifact@v3
         with:
-          name: openssl-${{ matrix.os }}-${{ matrix.compiler || 'clang' }}
+          name: openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}
           path: openssl-out
