@@ -42,6 +42,18 @@ jobs:
         run: choco install strawberryperl -y
         shell: powershell
 
+      - name: Install Perl modules (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          perl -MCPAN -e "install 'IPC::Cmd'; install 'Params::Check'; install 'Locale::Maketext::Simple';"
+        shell: powershell
+
+      - name: Install Perl modules (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          curl -L https://cpanmin.us | perl - --notest App::cpanminus
+          cpanm IPC::Cmd Params::Check Locale::Maketext::Simple
+
       - name: Setup MSVC environment
         if: matrix.compiler == 'msvc'
         uses: ilammy/msvc-dev-cmd@v1
@@ -84,7 +96,7 @@ jobs:
               "${{ github.workspace }}/openssl-universal-x86_64/lib/libcrypto.a" \
               "${{ github.workspace }}/openssl-universal-arm64/lib/libcrypto.a" \
               -output "${{ github.workspace }}/openssl-out/lib/libcrypto.a"
-              
+
             cp -R "${{ github.workspace }}/openssl-universal-x86_64/include" "${{ github.workspace }}/openssl-out/"
 
           else
