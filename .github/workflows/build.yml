@@ -1,4 +1,4 @@
-name: Build OpenSSL
+name: 🔧 Build OpenSSL
 
 on:
   workflow_dispatch:
@@ -24,16 +24,16 @@ jobs:
             triplet: mingw64
             make: make
 
-          # - os: windows-latest
-          #   compiler: msvc
-          #   triplet: VC-WIN64A
-          #   make: nmake
+          - os: windows-latest
+            compiler: msvc
+            triplet: VC-WIN64A
+            make: nmake
 
     steps:
-      - name: Checkout source
+      - name: 📥 Checkout source
         uses: actions/checkout@v3
 
-      - name: Install Perl modules (Linux/macOS)
+      - name: 🧰 Install Perl modules (Linux/macOS)
         if: runner.os != 'Windows'
         run: |
           curl -L https://cpanmin.us | perl - --notest -l "$HOME/perl5" App::cpanminus
@@ -41,7 +41,7 @@ jobs:
           export PERL5LIB="$HOME/perl5/lib/perl5"
           cpanm IPC::Cmd Params::Check Locale::Maketext::Simple
 
-      - name: Install MinGW (Ubuntu)
+      - name: 🧰 Install MinGW (Ubuntu)
         if: matrix.compiler == 'mingw'
         run: |
           sudo apt-get update
@@ -54,7 +54,12 @@ jobs:
             g++-mingw-w64-x86-64 \
             pkg-config
 
-      - name: Build OpenSSL (macOS)
+      - name: 🧰 Install NASM (Windows)
+        if: matrix.compiler == 'msvc'
+        shell: pwsh
+        run: choco install nasm -y
+
+      - name: 🍎 Build OpenSSL (macOS Universal)
         if: matrix.compiler == 'universal'
         shell: bash
         run: |
@@ -88,25 +93,91 @@ jobs:
 
           cp -R "${{ github.workspace }}/openssl-universal-x86_64/include" "${{ github.workspace }}/openssl-out/"
 
-      - name: Build OpenSSL (MinGW Cross)
+      - name: 🐧 Build OpenSSL (MinGW Cross)
         if: matrix.compiler == 'mingw'
         shell: bash
         run: |
           curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           cd openssl-${{ env.OPENSSL_VERSION }}
-      
+
           export CC=x86_64-w64-mingw32-gcc
           export AR=x86_64-w64-mingw32-ar
           export RANLIB=x86_64-w64-mingw32-ranlib
           export WINDRES=x86_64-w64-mingw32-windres
-      
+
           ./Configure mingw64 no-shared --prefix="${{ github.workspace }}/openssl-out"
           make -j$(nproc)
           make install
 
-      - name: Upload OpenSSL artifact
+      - name: 🧊 Build OpenSSL (MSVC)
+        if: matrix.compiler == 'msvc'
+        shell: cmd
+        run: |
+          curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          cd openssl-${{ env.OPENSSL_VERSION }}
+
+          call "%ProgramFiles(x86)%\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
+
+          perl Configure ${{ matrix.triplet }} no-shared --prefix=%GITHUB_WORKSPACE%\openssl-out
+          nmake
+          nmake install
+
+      - name: 📦 Upload OpenSSL artifact
         uses: actions/upload-artifact@v4
         with:
           name: openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}
           path: openssl-out
+
+  upload:
+    name: 🗂️ Create release and upload artifacts
+    needs:
+      - build-openssl
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_TAG: ${{ env.OPENSSL_VERSION }}
+
+    steps:
+      - name: 📥 Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+          merge-multiple: true
+
+      - name: 🗑️ Delete previous release and tag if exists
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" &>/dev/null; then
+            echo "Release '$RELEASE_TAG' exists. Deleting..."
+            gh release delete "$RELEASE_TAG" --cleanup-tag --yes --repo "$GITHUB_REPOSITORY" || echo "Failed to delete release. Ignoring."
+          else
+            echo "No release named '$RELEASE_TAG' found. Skipping delete."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🔐 Generate SHA256 checksums and file sizes
+        run: |
+          echo "| File | Size | SHA256 Checksum |" > release-body.md
+          echo "|------|------|-----------------|" >> release-body.md
+
+          find ./artifacts -type f | sort | while read -r file; do
+            hash=$(sha256sum "$file" | awk '{print $1}')
+            size=$(du -h "$file" | cut -f1)
+            filename=$(basename "$file")
+            echo "| \`$filename\` | $size | \`$hash\` |"
+          done >> release-body.md
+
+      - name: 🚀 Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          prerelease: false
+          allowUpdates: true
+          replacesArtifacts: true
+          name: "OpenSSL ${{ env.OPENSSL_VERSION }}"
+          artifacts: artifacts/**/*
+          bodyFile: release-body.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
