@@ -129,6 +129,18 @@ jobs:
           nmake
           nmake install
 
+      - name: 🖋️ Add OpenSSL license to output (Windows)
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          Invoke-WebRequest https://openssl-library.org/source/license/apache-license-2.0.txt -OutFile "${env:GITHUB_WORKSPACE}\openssl-out\LICENSE-OpenSSL.txt"
+
+      - name: 🖋️ Add OpenSSL license to output (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -sSL https://openssl-library.org/source/license/apache-license-2.0.txt -o "${{ github.workspace }}/openssl-out/LICENSE-OpenSSL.txt"
+     
       - name: 📦 Upload OpenSSL artifact
         uses: actions/upload-artifact@v4
         with:
