@@ -141,11 +141,19 @@ jobs:
         run: |
           curl -sSL https://openssl-library.org/source/license/apache-license-2.0.txt -o "${{ github.workspace }}/openssl-out/LICENSE-OpenSSL.txt"
 
-      - name: 📦 Compress OpenSSL output
+      - name: 📦 Compress OpenSSL output (Unix)
         shell: bash
+        if: runner.os != 'Windows'
         run: |
           zip -r openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}.zip openssl-out
-          
+      
+      - name: 📦 Compress OpenSSL output (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path openssl-out\* `
+                           -DestinationPath "openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}.zip"
+           
       - name: 📦 Upload OpenSSL artifact
         uses: actions/upload-artifact@v4
         with:
