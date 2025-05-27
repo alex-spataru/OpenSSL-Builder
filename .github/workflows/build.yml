@@ -115,19 +115,21 @@ jobs:
         if: runner.os == 'Windows'
         shell: powershell
         run: |
+          $perl = (Get-Command perl).Source
           Invoke-WebRequest https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz -OutFile openssl.tar.gz
           tar -xf openssl.tar.gz
           Set-Location openssl-${{ env.OPENSSL_VERSION }}
       
+          Write-Host "Using Perl: $perl"
           Write-Host "Configuring OpenSSL for ${{ matrix.triplet }}"
-          perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}\openssl-out"
+      
+          & $perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}\openssl-out"
       
           if ("${{ matrix.compiler }}" -eq "msvc") {
-            $makeCmd = "${{ matrix.make }}"
-            & $makeCmd install_dev
+            & nmake install_dev
           } else {
-            mingw32-make -j4
-            mingw32-make install
+            & mingw32-make -j4
+            & mingw32-make install
           }
 
       # ---------------------- Upload Artifact --------------------------
