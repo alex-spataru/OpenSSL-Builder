@@ -1,4 +1,4 @@
-name: 🔧 Build OpenSSL
+name: Build
 
 on:
   workflow_dispatch:
