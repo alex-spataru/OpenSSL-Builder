@@ -1,0 +1,63 @@
+name: Build OpenSSL
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-openssl:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            triplet: darwin64-x86_64-cc
+            make: make
+          - os: windows-latest
+            compiler: mingw
+            triplet: mingw64
+            make: mingw32-make
+          - os: windows-latest
+            compiler: msvc
+            triplet: VC-WIN64A
+            make: nmake
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install Perl
+        uses: strawberryperl/install@v1
+        if: runner.os == 'Windows'
+
+      - name: Install MSVC Dev Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        if: matrix.compiler == 'msvc'
+
+      - name: Download OpenSSL
+        run: |
+          curl -LO https://www.openssl.org/source/openssl-3.2.1.tar.gz
+          tar -xf openssl-3.2.1.tar.gz
+          cd openssl-3.2.1
+
+          echo "Configuring OpenSSL for ${{ matrix.triplet }}"
+
+          if [[ "${{ matrix.compiler }}" == "msvc" ]]; then
+            perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
+            ${{ matrix.make }} install_dev
+          else
+            perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
+            ${{ matrix.make }} -j4
+            ${{ matrix.make }} install
+          fi
+
+      - name: Upload OpenSSL artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: openssl-${{ matrix.os }}-${{ matrix.compiler || 'clang' }}
+          path: openssl-out
