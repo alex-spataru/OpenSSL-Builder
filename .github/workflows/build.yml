@@ -42,19 +42,21 @@ jobs:
         run: choco install strawberryperl -y
         shell: powershell
 
+      - name: Install required Perl modules (macOS/Linux)
+        if: runner.os != 'Windows'
+        run: |
+          curl -L https://cpanmin.us | perl - --notest -l "$HOME/perl5" App::cpanminus
+          export PATH="$HOME/perl5/bin:$PATH"
+          cpanm IPC::Cmd Params::Check Locale::Maketext::Simple
+
       - name: Install required Perl modules (Windows)
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          perl -MCPAN -e "install 'App::cpanminus'"
-          perl -MApp::cpanminus -e "App::cpanminus->run(qw(IPC::Cmd Params::Check Locale::Maketext::Simple))"
-
-      - name: Install required Perl modules (macOS)
-        if: runner.os != 'Windows'
-        run: |
-          curl -L https://cpanmin.us | perl - --notest App::cpanminus
-          perl -MApp::cpanminus -e 'App::cpanminus->run(qw(IPC::Cmd Params::Check Locale::Maketext::Simple))'
-          
+          perl -MCPAN -e "install App::cpanminus"
+          $cpanmpath = (Get-Command cpanm).Source
+          & $cpanmpath IPC::Cmd Params::Check Locale::Maketext::Simple
+    
       - name: Setup MSVC environment
         if: matrix.compiler == 'msvc'
         uses: ilammy/msvc-dev-cmd@v1
