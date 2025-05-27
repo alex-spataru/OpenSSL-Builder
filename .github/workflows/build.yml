@@ -15,8 +15,8 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            compiler: clang
-            triplet: darwin64-x86_64-cc
+            compiler: universal
+            triplet: universal
             make: make
 
           - os: windows-latest
@@ -52,11 +52,41 @@ jobs:
           tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           cd openssl-${{ env.OPENSSL_VERSION }}
 
-          echo "Configuring for: ${{ matrix.triplet }}"
+          echo "Configuring OpenSSL for ${{ matrix.triplet }}"
 
           if [[ "${{ matrix.compiler }}" == "msvc" ]]; then
             perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
             ${{ matrix.make }} install_dev
+
+          elif [[ "${{ matrix.compiler }}" == "universal" ]]; then
+            mkdir -p build-x86_64 build-arm64
+
+            for arch in x86_64 arm64; do
+              mkdir -p build-$arch
+              cp -R . build-$arch/src
+              pushd build-$arch/src
+
+              perl Configure darwin64-${arch}-cc no-shared --prefix="${{ github.workspace }}/openssl-universal-$arch"
+              make -j$(sysctl -n hw.logicalcpu)
+              make install_sw
+              popd
+            done
+
+            mkdir -p "${{ github.workspace }}/openssl-out/lib"
+            mkdir -p "${{ github.workspace }}/openssl-out/include"
+
+            lipo -create \
+              "${{ github.workspace }}/openssl-universal-x86_64/lib/libssl.a" \
+              "${{ github.workspace }}/openssl-universal-arm64/lib/libssl.a" \
+              -output "${{ github.workspace }}/openssl-out/lib/libssl.a"
+
+            lipo -create \
+              "${{ github.workspace }}/openssl-universal-x86_64/lib/libcrypto.a" \
+              "${{ github.workspace }}/openssl-universal-arm64/lib/libcrypto.a" \
+              -output "${{ github.workspace }}/openssl-out/lib/libcrypto.a"
+              
+            cp -R "${{ github.workspace }}/openssl-universal-x86_64/include" "${{ github.workspace }}/openssl-out/"
+
           else
             perl Configure ${{ matrix.triplet }} no-shared --prefix="${{ github.workspace }}/openssl-out"
             ${{ matrix.make }} -j4
@@ -64,7 +94,7 @@ jobs:
           fi
 
       - name: Upload OpenSSL artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}
           path: openssl-out
