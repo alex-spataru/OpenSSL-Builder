@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 env:
-  OPENSSL_VERSION: 3.5.0
+  OPENSSL_VERSION: 3.0.16
 
 jobs:
   build-openssl:
