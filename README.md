@@ -1,51 +1,47 @@
-# 🛠️ OpenSSL Builder (Static, Cross-Platform)
+# OpenSSL Builder – Static Cross-Platform Builds
 
-This repository builds **static OpenSSL libraries** for:
+This repository automates the process of building **static OpenSSL libraries** for multiple platforms. It is intended for C++ developers who need portable, redistributable OpenSSL binaries without relying on shared libraries or dynamic runtime dependencies.
 
-- ✅ **macOS (Universal: arm64 + x86_64)** via Clang
-- ✅ **Windows (MSVC)** — native build on GitHub-hosted Windows runners
-- ✅ **Windows (MinGW)** — cross-compiled from Linux using `mingw-w64`
+## Supported Targets
 
-These builds are **portable**, **redistributable**, and designed for integration into C++ projects that need a **fully self-contained OpenSSL setup** with no dynamic linking or runtime baggage.
+- **macOS (Universal)**  
+  Built natively for both `arm64` and `x86_64` using Clang and merged using `lipo`.
 
-Mostly built out of frustration. This repo was vibe-coded at 2 AM, while trying to get **MinGW builds of OpenSSL** without having access to a single Windows machine.
+- **Windows (MSVC)**  
+  Built natively using Microsoft's Visual Studio toolchain on GitHub-hosted Windows runners.
 
-- If you're reading this and it works for you — you're welcome.
-- If you're reading this and it doesn't — I'm sorry. PRs welcome.
-  
-## 🔄 Build Matrix
+- **Windows (MinGW)**  
+  Cross-compiled from Linux using `mingw-w64` targeting Windows.
 
-| Target Platform | Compiler | Strategy                      |
-|-----------------|----------|-------------------------------|
-| macOS           | Clang    | Dual-arch native (arm64/x86)  |
-| Windows         | MSVC     | Native on Windows runner      |
-| Windows         | MinGW    | Cross-compiled from Linux     |
+All builds are self-contained and do not require OpenSSL to be installed on the target system.
 
-Artifacts are uploaded automatically as part of a GitHub Release and include SHA256 checksums for verification.
+## Build Strategy
 
-## 📦 Output
+| Target Platform | Compiler | Build Strategy                    |
+|-----------------|----------|-----------------------------------|
+| macOS           | Clang    | Dual-arch native (arm64 + x86_64) |
+| Windows         | MSVC     | Native build with `nmake`         |
+| Windows         | MinGW    | Cross-compiled from Ubuntu        |
 
-Each build produces:
-- Static `libssl.a` and `libcrypto.a`
-- Matching OpenSSL headers
-- Platform-specific layout (`lib`, `include`, etc.)
-- SHA256 checksums in the release notes
+## Output Structure
 
-You’ll find everything in the [Releases](../../releases) tab once a workflow completes.
-
-## 📦 Output
-
-Each workflow run builds and uploads the following:
+Each completed build produces the following output:
 
 ```
 openssl-out/
-├── include/               # OpenSSL headers
+├── include/               # Public OpenSSL headers
 └── lib/                   # Static libraries
-├── libssl.a / .lib
-└── libcrypto.a / .lib
+├── libssl.a / libssl.lib
+├── libcrypto.a / libcrypto.lib
+└── libcrypto.a / libcrypto.lib
 ```
 
-### Example: Include in your project
+A copy of the official OpenSSL license file is also included in the output.
+
+## How to Use
+
+Integrating OpenSSL in a CMake-based project typically looks like this:
+
 ```cmake
 target_include_directories(MyApp PRIVATE path/to/openssl/include)
 target_link_libraries(MyApp PRIVATE
@@ -54,9 +50,17 @@ target_link_libraries(MyApp PRIVATE
 )
 ```
 
-For Windows with MSVC, use `.lib` files instead of `.a`.
+> On Windows with MSVC, use `.lib` files. On MinGW/macOS, use `.a`.
 
-## 🛡️ License
+## Artifact Delivery
 
-OpenSSL is licensed under Apache License 2.0.
-This repo only builds the source — it doesn’t modify or redistribute it.
+Each build run automatically uploads precompiled binaries as GitHub Actions artifacts or release assets. SHA256 checksums are included to validate integrity.
+
+You can retrieve the latest prebuilt outputs from the [Releases](../../releases) page.
+
+## License
+
+This repository does **not** modify or redistribute OpenSSL source code.  
+It uses the official sources available at [openssl.org](https://www.openssl.org/source/), built as-is.
+
+OpenSSL is licensed under the [Apache License 2.0](https://www.openssl.org/source/license-openssl-ssleay.txt).
