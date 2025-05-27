@@ -57,7 +57,9 @@ jobs:
       - name: 🧰 Install NASM (Windows)
         if: matrix.compiler == 'msvc'
         shell: pwsh
-        run: choco install nasm -y
+        run: |
+          choco install nasm -y
+          echo "C:\ProgramData\chocolatey\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: 🛠️ Setup MSVC Environment
         uses: ilammy/msvc-dev-cmd@v1
