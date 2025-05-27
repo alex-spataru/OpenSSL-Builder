@@ -95,13 +95,13 @@ jobs:
           curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           cd openssl-${{ env.OPENSSL_VERSION }}
-
+      
           export CC=x86_64-w64-mingw32-gcc
           export AR=x86_64-w64-mingw32-ar
           export RANLIB=x86_64-w64-mingw32-ranlib
           export WINDRES=x86_64-w64-mingw32-windres
-
-          ./Configure mingw64 no-shared --cross-compile-prefix=x86_64-w64-mingw32- --prefix="${{ github.workspace }}/openssl-out"
+      
+          ./Configure mingw64 no-shared --prefix="${{ github.workspace }}/openssl-out"
           make -j$(nproc)
           make install
 
