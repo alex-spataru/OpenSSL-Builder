@@ -24,6 +24,11 @@ jobs:
             triplet: mingw64
             make: make
 
+          - os: ubuntu-latest
+            compiler: llvm-mingw
+            triplet: mingw64
+            make: make
+            
           - os: windows-latest
             compiler: msvc
             triplet: VC-WIN64A
@@ -53,6 +58,21 @@ jobs:
             gcc-mingw-w64-x86-64 \
             g++-mingw-w64-x86-64 \
             pkg-config
+
+      - name: 🧰 Install LLVM-MinGW (Ubuntu)
+        if: matrix.compiler == 'llvm-mingw'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            lld \
+            llvm \
+            llvm-dev \
+            mingw-w64 \
+            curl \
+            perl \
+            make \
+            zip
 
       - name: 🧰 Install NASM (Windows)
         if: matrix.compiler == 'msvc'
@@ -100,7 +120,7 @@ jobs:
 
           cp -R "${{ github.workspace }}/openssl-universal-x86_64/include" "${{ github.workspace }}/openssl-out/"
 
-      - name: 🐧 Build OpenSSL (MinGW Cross)
+      - name: 🧊 Build OpenSSL (MinGW Cross)
         if: matrix.compiler == 'mingw'
         shell: bash
         run: |
@@ -116,6 +136,26 @@ jobs:
           ./Configure mingw64 no-shared --prefix="${{ github.workspace }}/openssl-out"
           make -j$(nproc)
           make install
+          
+      - name: 🧊 Build OpenSSL (LLVM-MinGW)
+        if: matrix.compiler == 'llvm-mingw'
+        shell: bash
+        run: |
+          curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          cd openssl-${{ env.OPENSSL_VERSION }}
+
+          export CC=clang
+          export CXX=clang++
+          export AR=llvm-ar
+          export RANLIB=llvm-ranlib
+          export RC=llvm-rc
+          export WINDRES=llvm-windres
+
+          ./Configure mingw64 no-shared --cross-compile-prefix=x86_64-w64-mingw32- --prefix="${{ github.workspace }}/openssl-out"
+          make -j$(nproc)
+          make install
+
 
       - name: 🧊 Build OpenSSL (MSVC)
         if: matrix.compiler == 'msvc'
