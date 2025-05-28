@@ -27,9 +27,9 @@ jobs:
             make: make
 
           - os: ubuntu-latest
-            compiler: llvm-mingw
-            triplet: mingw64
-            name: Windows-MinGW-amd64
+            compiler: gcc
+            triplet: linux-x86_64
+            name: Linux-GCC-amd64
             make: make
             
           - os: windows-latest
@@ -62,14 +62,6 @@ jobs:
             gcc-mingw-w64-x86-64 \
             g++-mingw-w64-x86-64 \
             pkg-config
-
-      - name: 🧰 Install LLVM-MinGW (Ubuntu)
-        if: matrix.compiler == 'llvm-mingw'
-        shell: bash
-        run: |
-          curl -LO https://github.com/mstorsjo/llvm-mingw/releases/download/20250514/llvm-mingw-20250514-ucrt-ubuntu-22.04-x86_64.tar.xz
-          tar -xf llvm-mingw-20250514-ucrt-ubuntu-22.04-x86_64.tar.xz
-          echo "$PWD/llvm-mingw-20250514-ucrt-ubuntu-22.04-x86_64/bin" >> $GITHUB_PATH
 
       - name: 🧰 Install NASM (Windows)
         if: matrix.compiler == 'msvc'
@@ -133,25 +125,6 @@ jobs:
           ./Configure mingw64 no-shared --prefix="${{ github.workspace }}/openssl-out"
           make -j$(nproc)
           make install
-          
-      - name: 🧊 Build OpenSSL (LLVM-MinGW)
-        if: matrix.compiler == 'llvm-mingw'
-        shell: bash
-        run: |
-          curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
-          tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
-          cd openssl-${{ env.OPENSSL_VERSION }}
-      
-          export CC=x86_64-w64-mingw32-clang
-          export CXX=x86_64-w64-mingw32-clang++
-          export AR=llvm-ar
-          export RANLIB=llvm-ranlib
-          export RC=llvm-rc
-          export WINDRES=llvm-windres
-      
-          ./Configure mingw64 no-shared --prefix="${{ github.workspace }}/openssl-out"
-          make -j$(nproc)
-          make install
 
       - name: 🧊 Build OpenSSL (MSVC)
         if: matrix.compiler == 'msvc'
@@ -164,6 +137,21 @@ jobs:
           perl Configure ${{ matrix.triplet }} no-shared --prefix=%GITHUB_WORKSPACE%\openssl-out
           nmake
           nmake install
+
+      - name: 🐧 Build OpenSSL (Linux GCC)
+        if: matrix.compiler == 'gcc'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential curl perl
+
+          curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
+          cd openssl-${{ env.OPENSSL_VERSION }}
+
+          ./Configure linux-x86_64 no-shared --prefix="${{ github.workspace }}/openssl-out"
+          make -j$(nproc)
+          make install
 
       - name: 🖋️ Add OpenSSL license to output (Windows)
         if: runner.os == 'Windows'
