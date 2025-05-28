@@ -23,7 +23,7 @@ jobs:
           - os: ubuntu-latest
             compiler: mingw
             triplet: mingw64
-            name: Windows-LLVM-amd64
+            name: Windows-MinGW-amd64
             make: make
 
           - os: ubuntu-latest
