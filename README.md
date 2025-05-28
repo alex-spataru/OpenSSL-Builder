@@ -6,14 +6,17 @@ This repository automates the process of building **static OpenSSL libraries** f
 
 ## Supported Targets
 
-- **macOS (Universal)**  
-  Built natively for both `arm64` and `x86_64` using Clang and merged using `lipo`.
-
 - **Windows (MSVC)**  
   Built natively using Microsoft's Visual Studio toolchain on GitHub-hosted Windows runners.
 
 - **Windows (MinGW)**  
   Cross-compiled from Linux using `mingw-w64` targeting Windows.
+  
+- **macOS (Universal)**  
+  Built natively for both `arm64` and `x86_64` using Clang and merged using `lipo`.
+
+- **Linux (GCC)**  
+  Built natively on Ubuntu using `gcc` for `x86_64`.
 
 All builds are self-contained and do not require OpenSSL to be installed on the target system.
 
@@ -21,9 +24,10 @@ All builds are self-contained and do not require OpenSSL to be installed on the 
 
 | Target Platform | Compiler | Build Strategy                    |
 |-----------------|----------|-----------------------------------|
-| macOS           | Clang    | Dual-arch native (arm64 + x86_64) |
 | Windows         | MSVC     | Native build with `nmake`         |
 | Windows         | MinGW    | Cross-compiled from Ubuntu        |
+| macOS           | Clang    | Dual-arch native (arm64 + x86_64) |
+| Linux           | GCC      | Native build on Ubuntu            |
 
 ## Output Structure
 
