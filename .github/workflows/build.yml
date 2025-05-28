@@ -17,21 +17,25 @@ jobs:
           - os: macos-latest
             compiler: universal
             triplet: universal
+            name: macOS-Universal
             make: make
 
           - os: ubuntu-latest
             compiler: mingw
             triplet: mingw64
+            name: Windows-LLVM-amd64
             make: make
 
           - os: ubuntu-latest
             compiler: llvm-mingw
             triplet: mingw64
+            name: Windows-MinGW-amd64
             make: make
             
           - os: windows-latest
             compiler: msvc
             triplet: VC-WIN64A
+            name: Windows-MSVC-amd64
             make: nmake
 
     steps:
@@ -61,18 +65,12 @@ jobs:
 
       - name: 🧰 Install LLVM-MinGW (Ubuntu)
         if: matrix.compiler == 'llvm-mingw'
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            clang \
-            lld \
-            llvm \
-            llvm-dev \
-            mingw-w64 \
-            curl \
-            perl \
-            make \
-            zip
+          curl -LO https://github.com/mstorsjo/llvm-mingw/releases/download/20240510/llvm-mingw-20240510-ucrt-ubuntu-20.04-x86_64.tar.xz
+          tar -xf llvm-mingw-20240510-ucrt-ubuntu-20.04-x86_64.tar.xz
+          echo "$PWD/llvm-mingw-20240510-ucrt-ubuntu-20.04-x86_64/bin" >> $GITHUB_PATH
+
 
       - name: 🧰 Install NASM (Windows)
         if: matrix.compiler == 'msvc'
@@ -185,20 +183,20 @@ jobs:
         shell: bash
         if: runner.os != 'Windows'
         run: |
-          zip -r openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}.zip openssl-out
+          zip -r OpenSSL-${{ env.OPENSSL_VERSION }}-${{ matrix.name }}.zip openssl-out
       
       - name: 📦 Compress OpenSSL output (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           Compress-Archive -Path openssl-out\* `
-                           -DestinationPath "openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}.zip"
+                           -DestinationPath "OpenSSL-${{ env.OPENSSL_VERSION }}-${{ matrix.name }}.zip"
            
       - name: 📦 Upload OpenSSL artifact
         uses: actions/upload-artifact@v4
         with:
-          name: openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}
-          path: openssl-${{ env.OPENSSL_VERSION }}-${{ matrix.os }}-${{ matrix.compiler }}.zip
+          name: OpenSSL-${{ env.OPENSSL_VERSION }}-${{ matrix.name }}
+          path: OpenSSL-${{ env.OPENSSL_VERSION }}-${{ matrix.name }}.zip
 
   upload:
     name: 🗂️ Create release and upload artifacts
