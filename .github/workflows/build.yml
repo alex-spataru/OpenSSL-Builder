@@ -190,9 +190,6 @@ jobs:
       - build-openssl
     runs-on: ubuntu-latest
 
-    env:
-      RELEASE_TAG: 3.5.0
-
     steps:
       - name: 📥 Download artifacts
         uses: actions/download-artifact@v4
@@ -226,7 +223,7 @@ jobs:
       - name: 🚀 Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ env.RELEASE_TAG }}
+          tag: ${{ env.OPENSSL_VERSION }}
           prerelease: false
           allowUpdates: true
           replacesArtifacts: true
