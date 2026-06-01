@@ -7,6 +7,7 @@ on:
 
 env:
   OPENSSL_VERSION: 4.0.0
+  MACOS_DEPLOYMENT_TARGET: "12.0"
 
 jobs:
   build-openssl:
@@ -82,6 +83,12 @@ jobs:
           curl -LO https://www.openssl.org/source/openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           tar -xf openssl-${{ env.OPENSSL_VERSION }}.tar.gz
           cd openssl-${{ env.OPENSSL_VERSION }}
+
+          # Stamp both slices with a min-OS of 12.0 so consumers linking against
+          # CMAKE_OSX_DEPLOYMENT_TARGET=12.0 don't get "built for newer macOS"
+          # linker warnings. clang and ld read MACOSX_DEPLOYMENT_TARGET from the
+          # environment, so this applies to every compile and link below.
+          export MACOSX_DEPLOYMENT_TARGET=${{ env.MACOS_DEPLOYMENT_TARGET }}
 
           mkdir -p build-x86_64 build-arm64
           for arch in x86_64 arm64; do
